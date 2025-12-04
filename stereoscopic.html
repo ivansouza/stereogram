@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StereoGen 3D - Gerador de Imagens Estereoscópicas</title>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    
+    <!-- Babel para JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Configuração do Tailwind -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    animation: {
+                        'fade-in': 'fadeIn 0.5s ease-out',
+                        'slide-up': 'slideUp 0.5s ease-out',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' },
+                        },
+                        slideUp: {
+                            '0%': { transform: 'translateY(20px)', opacity: '0' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #0f0f11; /* Darker background similar to provided snippet */
+            color: #e5e5e5;
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e1e24; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #4b5563; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #6b7280; 
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // --- Ícones (Lucide style) ---
+        const Icons = {
+            Settings: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.47a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.39a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>,
+            Image: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>,
+            Eye: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>,
+            Loader2: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>,
+            Save: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>,
+            Trash2: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>,
+            Info: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>,
+            AlertCircle: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>,
+            Download: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>,
+            Link: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>,
+            Cpu: (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><rect x="4" y="4" width="16" height="16" rx="2" ry="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" x2="9" y1="1" y2="4"/><line x1="15" x2="15" y1="1" y2="4"/><line x1="9" x2="9" y1="20" y2="23"/><line x1="15" x2="15" y1="20" y2="23"/><line x1="20" x2="23" y1="9" y2="9"/><line x1="20" x2="23" y1="14" y2="14"/><line x1="1" x2="4" y1="9" y2="9"/><line x1="1" x2="4" y1="14" y2="14"/></svg>
+        };
+
+        const App = () => {
+            const [apiKey, setApiKey] = useState('');
+            const [tempKey, setTempKey] = useState('');
+            // ATUALIZAÇÃO: Usando o modelo imagen-4.0 conforme solicitado
+            const [modelId, setModelId] = useState('imagen-4.0-generate-001'); 
+            const [tempModelId, setTempModelId] = useState('imagen-4.0-generate-001');
+            
+            const [prompt, setPrompt] = useState('');
+            const [generatedImage, setGeneratedImage] = useState(null);
+            const [loading, setLoading] = useState(false);
+            const [showSettings, setShowSettings] = useState(false);
+            const [error, setError] = useState('');
+            const [showGuide, setShowGuide] = useState(true);
+
+            useEffect(() => {
+                const savedKey = localStorage.getItem('gemini_api_key');
+                const savedModel = localStorage.getItem('gemini_model_id');
+                
+                if (savedKey) {
+                    setApiKey(savedKey);
+                    setTempKey(savedKey);
+                } else {
+                    setShowSettings(true);
+                }
+
+                // Se houver um modelo salvo, use-o; caso contrário, mantenha o padrão 4.0
+                if (savedModel) {
+                    setModelId(savedModel);
+                    setTempModelId(savedModel);
+                }
+            }, []);
+
+            const saveSettings = () => {
+                if (tempKey.trim().length > 0) {
+                    localStorage.setItem('gemini_api_key', tempKey);
+                    setApiKey(tempKey);
+                }
+                
+                if (tempModelId.trim().length > 0) {
+                    localStorage.setItem('gemini_model_id', tempModelId);
+                    setModelId(tempModelId);
+                }
+
+                setShowSettings(false);
+                setError('');
+            };
+
+            const removeKey = () => {
+                localStorage.removeItem('gemini_api_key');
+                localStorage.removeItem('gemini_model_id');
+                setApiKey('');
+                setTempKey('');
+                setModelId('imagen-4.0-generate-001'); // Reset para o novo padrão
+                setTempModelId('imagen-4.0-generate-001');
+                setError('');
+            };
+
+            const generateImage = async () => {
+                if (!apiKey) {
+                    setError('Por favor, configure sua API Key nas configurações.');
+                    setShowSettings(true);
+                    return;
+                }
+
+                if (!prompt.trim()) {
+                    setError('Por favor, digite uma descrição para a imagem.');
+                    return;
+                }
+
+                setLoading(true);
+                setError('');
+                setGeneratedImage(null);
+
+                try {
+                    const enhancedPrompt = `Generate a high-quality stereoscopic 3D image (side-by-side) for cross-eyed viewing of: "${prompt}". The image must be split into two equal panels. The left panel shows the right-eye perspective, and the right panel shows the left-eye perspective (cross-view format). Ensure deep depth perception, sharp focus, and perfect alignment between the two sides. Photorealistic style.`;
+                    
+                    const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:predict?key=${apiKey}`;
+
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            instances: [{ prompt: enhancedPrompt }],
+                            parameters: {
+                                sampleCount: 1,
+                                aspectRatio: "16:9",
+                                personGeneration: "allow_adult",
+                            },
+                        }),
+                    });
+
+                    const data = await response.json();
+
+                    if (data.error) {
+                        if (data.error.message.includes('not found') || data.error.code === 404) {
+                            throw new Error(`Modelo "${modelId}" não encontrado. Se sua chave não tiver acesso ao Imagen 4, tente mudar para "imagen-3.0-generate-001" nas configurações.`);
+                        }
+                        throw new Error(data.error.message || 'Erro ao gerar imagem.');
+                    }
+
+                    if (data.predictions && data.predictions.length > 0) {
+                        const base64Image = data.predictions[0].bytesBase64Encoded;
+                        setGeneratedImage(`data:image/png;base64,${base64Image}`);
+                    } else {
+                        throw new Error('Nenhuma imagem retornada. Verifique o prompt e as permissões.');
+                    }
+                } catch (err) {
+                    console.error(err);
+                    setError(err.message);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            return (
+                <div className="min-h-screen bg-[#0f0f11] text-[#e5e5e5] font-sans selection:bg-purple-500 selection:text-white pb-20">
+                    {/* Header */}
+                    <header className="border-b border-[#1e1e24] bg-[#1e1e24]/80 backdrop-blur-md sticky top-0 z-50">
+                        <div className="max-w-5xl mx-auto px-4 py-4 flex justify-between items-center">
+                            <div className="flex items-center gap-3">
+                                <div className="bg-gradient-to-br from-purple-600 to-pink-600 p-2 rounded-lg shadow-lg shadow-purple-900/20">
+                                    <Icons.Eye className="w-5 h-5 text-white" />
+                                </div>
+                                <h1 className="text-xl font-bold bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent">
+                                    StereoGen 3D
+                                </h1>
+                            </div>
+                            <button
+                                onClick={() => setShowSettings(!showSettings)}
+                                className={`p-2 rounded-full transition-all duration-300 ${
+                                    showSettings ? 'bg-purple-600 text-white rotate-90' : 'hover:bg-[#27272a] text-gray-400'
+                                }`}
+                                title="Configurações da API"
+                            >
+                                <Icons.Settings className="w-6 h-6" />
+                            </button>
+                        </div>
+                    </header>
+
+                    <main className="max-w-5xl mx-auto px-4 py-8">
+                        
+                        {/* Settings Panel */}
+                        {showSettings && (
+                            <div className="mb-8 p-6 bg-[#1e1e24] border border-gray-800 rounded-2xl animate-fade-in shadow-2xl">
+                                <div className="flex justify-between items-center mb-4">
+                                    <h2 className="text-lg font-semibold flex items-center gap-2 text-purple-400">
+                                        <Icons.Settings className="w-5 h-5" /> Configurações
+                                    </h2>
+                                </div>
+                                
+                                <div className="bg-blue-900/20 border border-blue-800/50 p-4 rounded-xl mb-6">
+                                    <p className="text-sm text-blue-200 flex items-start gap-2">
+                                        <Icons.Info className="w-4 h-4 mt-0.5 text-blue-400 shrink-0" />
+                                        <span>
+                                            Requer uma API Key com acesso ao modelo <strong>Imagen</strong>.
+                                            <a 
+                                                href="https://aistudio.google.com/app/apikey" 
+                                                target="_blank" 
+                                                rel="noopener noreferrer"
+                                                className="inline-flex items-center gap-1 text-blue-400 hover:text-blue-300 underline font-medium ml-1"
+                                            >
+                                                Obter chave <Icons.Link className="w-3 h-3" />
+                                            </a>
+                                        </span>
+                                    </p>
+                                </div>
+
+                                <div className="space-y-5">
+                                    {/* API Key Input */}
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 mb-1.5 ml-1 uppercase tracking-wider">API Key</label>
+                                        <input
+                                            type="password"
+                                            placeholder="Cole sua chave aqui..."
+                                            value={tempKey}
+                                            onChange={(e) => setTempKey(e.target.value)}
+                                            className="w-full bg-[#0f0f11] border border-gray-700 rounded-lg px-4 py-3 focus:ring-2 focus:ring-purple-500 focus:outline-none transition-all placeholder:text-gray-700 text-white font-mono"
+                                        />
+                                    </div>
+
+                                    {/* Model ID Input (Advanced) */}
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 mb-1.5 ml-1 uppercase tracking-wider flex items-center gap-2">
+                                            <span>Modelo de IA</span>
+                                            <span className="bg-purple-900/30 text-purple-300 text-[10px] px-1.5 py-0.5 rounded border border-purple-500/30">ID</span>
+                                        </label>
+                                        <div className="relative">
+                                            <Icons.Cpu className="absolute left-3 top-3.5 w-5 h-5 text-gray-600" />
+                                            <input
+                                                type="text"
+                                                placeholder="ex: imagen-4.0-generate-001"
+                                                value={tempModelId}
+                                                onChange={(e) => setTempModelId(e.target.value)}
+                                                className="w-full bg-[#0f0f11] border border-gray-700 rounded-lg pl-10 pr-4 py-3 focus:ring-2 focus:ring-purple-500 focus:outline-none transition-all text-gray-300 font-mono text-sm"
+                                            />
+                                        </div>
+                                        <p className="text-xs text-gray-500 mt-2 ml-1">
+                                            Padrão atual: <code>imagen-4.0-generate-001</code>. Se falhar, tente <code>imagen-3.0-generate-001</code>.
+                                        </p>
+                                    </div>
+                                    
+                                    <div className="flex gap-3 pt-2">
+                                        <button
+                                            onClick={saveSettings}
+                                            className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white px-6 py-2.5 rounded-lg font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-purple-900/20 active:scale-95"
+                                        >
+                                            <Icons.Save className="w-4 h-4" /> Salvar
+                                        </button>
+                                        {apiKey && (
+                                            <button
+                                                onClick={removeKey}
+                                                className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 px-4 py-2.5 rounded-lg transition-colors flex items-center justify-center"
+                                                title="Limpar dados salvos"
+                                            >
+                                                <Icons.Trash2 className="w-4 h-4" />
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Input Section */}
+                        <div className="flex flex-col gap-4 mb-10">
+                            <div className="relative group">
+                                <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl opacity-20 group-hover:opacity-40 transition duration-500 blur"></div>
+                                <textarea
+                                    value={prompt}
+                                    onChange={(e) => setPrompt(e.target.value)}
+                                    placeholder="Descreva o que você quer ver em 3D... (ex: Um astronauta flutuando em uma nebulosa colorida)"
+                                    className="relative w-full h-32 bg-[#1e1e24] border border-gray-700 rounded-2xl p-4 text-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none transition-all placeholder:text-gray-600 text-white shadow-xl"
+                                ></textarea>
+                                <div className="absolute bottom-4 right-4 text-xs font-mono text-gray-500 bg-[#0f0f11] px-2 py-1 rounded border border-gray-800">
+                                    {modelId}
+                                </div>
+                            </div>
+
+                            <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+                                <div className="flex items-center gap-2 text-sm text-gray-400 bg-[#1e1e24] px-4 py-2.5 rounded-full border border-gray-800 shadow-sm">
+                                    <label className="flex items-center gap-2 cursor-pointer hover:text-purple-400 transition-colors select-none">
+                                        <input 
+                                            type="checkbox" 
+                                            checked={showGuide} 
+                                            onChange={(e) => setShowGuide(e.target.checked)}
+                                            className="w-4 h-4 rounded border-gray-600 bg-[#0f0f11] text-purple-500 focus:ring-purple-500 accent-purple-500"
+                                        />
+                                        Mostrar guias de foco
+                                    </label>
+                                </div>
+
+                                <button
+                                    onClick={generateImage}
+                                    disabled={loading || !prompt}
+                                    className={`w-full sm:w-auto px-8 py-3 rounded-xl font-bold text-lg flex items-center justify-center gap-2 transition-all transform hover:scale-105 active:scale-95 ${
+                                        loading || !prompt
+                                            ? 'bg-gray-800 text-gray-600 cursor-not-allowed border border-gray-700'
+                                            : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white shadow-lg shadow-purple-500/20 border border-purple-500/20'
+                                    }`}
+                                >
+                                    {loading ? (
+                                        <>
+                                            <Icons.Loader2 className="w-5 h-5 animate-spin" /> Gerando...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Icons.Image className="w-5 h-5" /> Gerar 3D
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                            
+                            {error && (
+                                <div className="animate-fade-in p-4 bg-red-900/20 border border-red-500/30 rounded-xl flex items-start gap-3 text-red-200 shadow-lg">
+                                    <Icons.AlertCircle className="w-5 h-5 shrink-0 mt-0.5 text-red-400" />
+                                    <div className="flex flex-col gap-1">
+                                        <span className="font-bold text-red-400">Erro na geração</span>
+                                        <span className="text-sm opacity-90 leading-relaxed">{error}</span>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Image Display Area */}
+                        {generatedImage && (
+                            <div className="animate-slide-up">
+                                <div className="bg-[#1e1e24] p-6 rounded-3xl border border-gray-800 shadow-2xl relative overflow-hidden group">
+                                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-purple-500 to-transparent opacity-50"></div>
+                                    
+                                    <div className="flex justify-between items-start mb-6 border-b border-gray-800 pb-4">
+                                        <div>
+                                            <h3 className="text-xl font-bold text-white mb-1">Resultado Estereoscópico</h3>
+                                            <p className="text-sm text-gray-400 flex items-center gap-1">
+                                                <Icons.Info className="w-3 h-3 text-purple-500" /> Técnica: Cross-Eye (Cruzar os olhos)
+                                            </p>
+                                        </div>
+                                        <button 
+                                            onClick={() => {
+                                                const link = document.createElement('a');
+                                                link.href = generatedImage;
+                                                link.download = `stereo-3d-${Date.now()}.png`;
+                                                link.click();
+                                            }}
+                                            className="text-xs bg-[#0f0f11] hover:bg-gray-800 text-white px-4 py-2 rounded-full transition-colors flex items-center gap-2 border border-gray-700 font-medium"
+                                        >
+                                            <Icons.Download className="w-3 h-3" /> Baixar
+                                        </button>
+                                    </div>
+
+                                    <div className="flex flex-col items-center">
+                                        
+                                        {showGuide && (
+                                            <div className="w-full max-w-4xl flex justify-around mb-4 transition-opacity duration-500 opacity-80 hover:opacity-100">
+                                                <div className="w-3 h-3 bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.8)] ring-4 ring-white/10" />
+                                                <div className="w-3 h-3 bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.8)] ring-4 ring-white/10" />
+                                            </div>
+                                        )}
+
+                                        <div className="relative w-full max-w-4xl rounded-xl overflow-hidden ring-1 ring-gray-700 shadow-2xl bg-black">
+                                            <img 
+                                                src={generatedImage} 
+                                                alt="Conteúdo 3D Estereoscópico" 
+                                                className="w-full h-auto object-contain"
+                                            />
+                                        </div>
+
+                                        <div className="mt-8 max-w-2xl text-center bg-[#0f0f11] p-6 rounded-2xl border border-gray-800 shadow-inner">
+                                            <h4 className="font-bold text-purple-400 mb-3 text-lg">Como visualizar (Cross-Eye)</h4>
+                                            <p className="text-gray-400 text-sm leading-relaxed">
+                                                1. Olhe para o centro da imagem.<br/>
+                                                2. Cruze os olhos lentamente (olhe para a ponta do nariz) até ver 3 imagens em vez de 2.<br/>
+                                                3. Foque na <strong>imagem do centro</strong>. Quando ela estiver nítida, o efeito 3D surgirá.<br/>
+                                            </p>
+                                        </div>
+
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Empty State */}
+                        {!generatedImage && !loading && !error && (
+                            <div className="text-center py-24 opacity-20 select-none pointer-events-none">
+                                <Icons.Eye className="w-32 h-32 mx-auto mb-6 text-gray-600" />
+                                <p className="text-2xl font-light tracking-widest uppercase text-gray-500">StereoGen 3D</p>
+                            </div>
+                        )}
+
+                    </main>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
+
