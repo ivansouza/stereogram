@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     
-    <!-- COMMANDS TO PREVENT CACHING -->
+    <!-- Prevent Caching -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -17,9 +17,10 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #0f0f11;
             color: #e5e5e5;
+            touch-action: manipulation;
         }
         canvas {
-            image-rendering: auto; /* Better for photos/textures */
+            image-rendering: auto; 
         }
         .glass-panel {
             background-color: #1e1e24;
@@ -38,6 +39,7 @@
             -webkit-appearance: none;
             appearance: none;
         }
+        /* Scrollbar */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: #0f0f11; }
         ::-webkit-scrollbar-thumb { background: #444; border-radius: 3px; }
@@ -54,7 +56,13 @@
         .theme-depth .accent-text { color: #a855f7; } 
         .theme-depth .accent-bg { background-color: #9333ea; } 
         .theme-texture .accent-text { color: #ec4899; } 
-        .theme-texture .accent-bg { background-color: #db2777; } 
+        .theme-texture .accent-bg { background-color: #db2777; }
+
+        /* Brightness Gesture Overlay */
+        .brightness-overlay {
+            background: linear-gradient(to top, rgba(0,0,0,0.5), transparent);
+            pointer-events: none;
+        }
     </style>
 </head>
 <body class="min-h-screen flex flex-col overflow-hidden">
@@ -105,14 +113,28 @@
                     <h2 class="text-xs font-bold text-purple-400 uppercase tracking-wider flex items-center gap-2">
                         <i data-lucide="layers" class="w-3 h-3"></i> Depth Map
                     </h2>
-                    <button onclick="openGenerator('depth')" class="text-[10px] bg-purple-600/20 hover:bg-purple-600 text-purple-300 hover:text-white px-2 py-1 rounded border border-purple-600/50 transition flex items-center gap-1 shadow-sm">
-                        <i data-lucide="sparkles" class="w-3 h-3"></i> AI
-                    </button>
+                    <div class="flex gap-2">
+                        <!-- Botão de Download do Depth Map -->
+                        <button onclick="downloadAsset('depth')" class="text-[10px] bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white p-1.5 rounded border border-gray-700 transition" title="Save Depth Map">
+                            <i data-lucide="download" class="w-3 h-3"></i>
+                        </button>
+                        <button onclick="openGenerator('depth')" class="text-[10px] bg-purple-600/20 hover:bg-purple-600 text-purple-300 hover:text-white px-2 py-1 rounded border border-purple-600/50 transition flex items-center gap-1 shadow-sm">
+                            <i data-lucide="sparkles" class="w-3 h-3"></i> AI
+                        </button>
+                    </div>
                 </div>
                 
-                <div class="bg-black/50 rounded-lg p-3 border border-gray-800 mb-3 text-center relative overflow-hidden h-32 flex items-center justify-center group-hover:border-purple-900/30 transition">
-                    <img id="depthPreview" class="w-full h-full object-contain opacity-60" alt="Preview">
-                    <div class="absolute bottom-1 right-1 bg-black/80 px-1.5 rounded text-[9px] text-gray-400 font-mono" id="depthDims">-- x --</div>
+                <!-- Container da Imagem com Gestos -->
+                <div id="depthContainer" class="bg-black/50 rounded-lg border border-gray-800 mb-3 text-center relative overflow-hidden h-32 flex items-center justify-center group-hover:border-purple-900/30 transition cursor-ns-resize select-none touch-none">
+                    <img id="depthPreview" class="w-full h-full object-contain opacity-100" alt="Preview">
+                    
+                    <!-- Indicador de Brilho -->
+                    <div id="brightnessIndicator" class="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 transition-opacity pointer-events-none">
+                        <span class="text-white font-bold text-lg" id="brightnessText">0%</span>
+                    </div>
+                    
+                    <div class="absolute bottom-1 right-1 bg-black/80 px-1.5 rounded text-[9px] text-gray-400 font-mono pointer-events-none" id="depthDims">-- x --</div>
+                    <div class="absolute top-1 left-1 bg-black/60 px-1.5 rounded text-[8px] text-gray-500 pointer-events-none">Drag to Adjust Brightness</div>
                 </div>
 
                 <div class="grid grid-cols-2 gap-2">
@@ -131,9 +153,15 @@
                     <h2 class="text-xs font-bold text-pink-400 uppercase tracking-wider flex items-center gap-2">
                         <i data-lucide="image" class="w-3 h-3"></i> Texture (Pattern)
                     </h2>
-                    <button onclick="openGenerator('texture')" class="text-[10px] bg-pink-600/20 hover:bg-pink-600 text-pink-300 hover:text-white px-2 py-1 rounded border border-pink-600/50 transition flex items-center gap-1 shadow-sm">
-                        <i data-lucide="sparkles" class="w-3 h-3"></i> AI
-                    </button>
+                    <div class="flex gap-2">
+                        <!-- Botão de Download da Textura -->
+                        <button onclick="downloadAsset('texture')" id="dlTextureBtn" class="hidden text-[10px] bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white p-1.5 rounded border border-gray-700 transition" title="Save Texture">
+                            <i data-lucide="download" class="w-3 h-3"></i>
+                        </button>
+                        <button onclick="openGenerator('texture')" class="text-[10px] bg-pink-600/20 hover:bg-pink-600 text-pink-300 hover:text-white px-2 py-1 rounded border border-pink-600/50 transition flex items-center gap-1 shadow-sm">
+                            <i data-lucide="sparkles" class="w-3 h-3"></i> AI
+                        </button>
+                    </div>
                 </div>
 
                 <div class="bg-black/50 rounded-lg p-3 border border-gray-800 mb-3 text-center relative overflow-hidden h-24 flex items-center justify-center group-hover:border-pink-900/30 transition">
@@ -325,12 +353,17 @@
         const patternPreview = document.getElementById('patternPreview');
         const aspectRatioSelect = document.getElementById('aspectRatioSelect');
         const canvasContainer = document.getElementById('canvasContainer');
+        const dlTextureBtn = document.getElementById('dlTextureBtn');
+        
+        // Depth Map Brightness Control State
+        let depthBrightness = 0; // -100 to 100
+        let isDraggingDepth = false;
+        let lastY = 0;
         
         let loadedDepthImg = null;
         let loadedPatternImg = null;
         let currentGenType = 'depth'; 
 
-        // PROMPT STATE
         let depthPromptState = "";
         let texturePromptState = "";
 
@@ -338,6 +371,7 @@
         window.onload = () => {
             loadExample('circle');
             setupEvents();
+            setupGestureControl();
             checkApiKey();
         };
 
@@ -366,6 +400,70 @@
             });
         }
 
+        // --- BRIGHTNESS GESTURE CONTROL ---
+        function setupGestureControl() {
+            const container = document.getElementById('depthContainer');
+            
+            const startDrag = (y) => {
+                isDraggingDepth = true;
+                lastY = y;
+                document.getElementById('brightnessIndicator').style.opacity = 1;
+            };
+
+            const doDrag = (y) => {
+                if (!isDraggingDepth) return;
+                
+                const deltaY = lastY - y; // Up = Increase, Down = Decrease
+                depthBrightness += deltaY * 0.5; // Sensitivity
+                
+                // Clamp
+                if(depthBrightness > 100) depthBrightness = 100;
+                if(depthBrightness < -100) depthBrightness = -100;
+                
+                lastY = y;
+                
+                updateBrightnessVisuals();
+            };
+
+            const endDrag = () => {
+                isDraggingDepth = false;
+                // Fade out text after delay
+                setTimeout(() => {
+                    if(!isDraggingDepth) document.getElementById('brightnessIndicator').style.opacity = 0;
+                }, 800);
+                // Trigger re-generation
+                generateStereogram();
+            };
+
+            // Mouse Events
+            container.addEventListener('mousedown', (e) => startDrag(e.clientY));
+            window.addEventListener('mousemove', (e) => doDrag(e.clientY));
+            window.addEventListener('mouseup', endDrag);
+
+            // Touch Events
+            container.addEventListener('touchstart', (e) => {
+                // Prevent scrolling page while adjusting
+                e.preventDefault(); 
+                startDrag(e.touches[0].clientY);
+            }, {passive: false});
+            
+            window.addEventListener('touchmove', (e) => {
+                if(isDraggingDepth) doDrag(e.touches[0].clientY);
+            }, {passive: false});
+            
+            window.addEventListener('touchend', endDrag);
+        }
+
+        function updateBrightnessVisuals() {
+            // Apply CSS filter to preview image for immediate visual feedback
+            const brightnessValue = 100 + depthBrightness; // 100 is default (100%)
+            document.getElementById('depthPreview').style.filter = `brightness(${brightnessValue}%)`;
+            
+            // Update Text
+            const sign = depthBrightness > 0 ? "+" : "";
+            document.getElementById('brightnessText').innerText = `Brightness: ${sign}${Math.round(depthBrightness)}%`;
+        }
+
         // --- FILE HANDLING ---
         function handleUpload(e, type) {
             const file = e.target.files[0];
@@ -378,12 +476,16 @@
                         loadedDepthImg = img;
                         depthPreview.src = img.src;
                         document.getElementById('depthDims').innerText = `${img.width}x${img.height}`;
+                        // Reset brightness on new upload
+                        depthBrightness = 0;
+                        updateBrightnessVisuals();
                     } else {
                         loadedPatternImg = img;
                         patternPreview.src = img.src;
                         patternPreview.classList.remove('hidden');
                         document.getElementById('patternPlaceholder').classList.add('hidden');
                         document.getElementById('removeTextureBtn').classList.remove('hidden');
+                        dlTextureBtn.classList.remove('hidden');
                     }
                     generateStereogram();
                 };
@@ -422,6 +524,8 @@
             loadedDepthImg.onload = () => {
                 depthPreview.src = loadedDepthImg.src;
                 document.getElementById('depthDims').innerText = `${w}x${h}`;
+                depthBrightness = 0;
+                updateBrightnessVisuals();
                 generateStereogram();
             };
             loadedDepthImg.src = tCanvas.toDataURL();
@@ -434,10 +538,49 @@
             patternPreview.classList.add('hidden');
             document.getElementById('patternPlaceholder').classList.remove('hidden');
             document.getElementById('removeTextureBtn').classList.add('hidden');
+            dlTextureBtn.classList.add('hidden');
             generateStereogram();
         }
 
-        // --- CORE LOGIC: STEREOGRAM (FIXED TEXTURE TILING) ---
+        function downloadAsset(type) {
+            let srcLink = "";
+            let name = "";
+            
+            if (type === 'depth' && loadedDepthImg) {
+                // If brightness is modified, we need to draw it to a canvas first to bake the filter
+                if (depthBrightness !== 0) {
+                    const tempCanvas = document.createElement('canvas');
+                    tempCanvas.width = loadedDepthImg.width;
+                    tempCanvas.height = loadedDepthImg.height;
+                    const tCtx = tempCanvas.getContext('2d');
+                    
+                    // Apply Brightness Filter
+                    const bVal = 100 + depthBrightness;
+                    tCtx.filter = `brightness(${bVal}%)`;
+                    tCtx.drawImage(loadedDepthImg, 0, 0);
+                    
+                    srcLink = tempCanvas.toDataURL();
+                } else {
+                    srcLink = loadedDepthImg.src;
+                }
+                name = `depth_map_${Date.now()}.png`;
+            } 
+            else if (type === 'texture' && loadedPatternImg) {
+                srcLink = loadedPatternImg.src;
+                name = `texture_pattern_${Date.now()}.png`;
+            }
+
+            if(srcLink) {
+                const link = document.createElement('a');
+                link.download = name;
+                link.href = srcLink;
+                link.click();
+            } else {
+                alert("No image to download.");
+            }
+        }
+
+        // --- CORE LOGIC: STEREOGRAM ---
         function generateStereogram() {
             if (!loadedDepthImg) return;
 
@@ -466,31 +609,32 @@
             const yOffset = showGuides ? 50 : 0;
             canvas.height = targetH + yOffset;
 
-            // CSS Visual Adjustment for Cover
             canvas.style.maxWidth = "100%";
             canvas.style.maxHeight = "100%";
             canvas.style.aspectRatio = `${targetW}/${targetH + yOffset}`;
 
-
-            // 2. DEPTH MAP (Cover/Stretch logic)
+            // 2. DEPTH MAP (With Brightness Adjustment)
             const dCtx = document.createElement('canvas').getContext('2d');
             dCtx.canvas.width = targetW;
             dCtx.canvas.height = targetH;
+            
+            // Apply Brightness HERE in the logic
+            const bVal = 100 + depthBrightness;
+            dCtx.filter = `brightness(${bVal}%)`;
+            
             dCtx.drawImage(loadedDepthImg, 0, 0, targetW, targetH);
             const depthData = dCtx.getImageData(0,0,targetW,targetH).data;
 
-            // 3. TEXTURE / PATTERN STRIP (TILING)
+            // 3. TEXTURE
             let pCtx = document.createElement('canvas').getContext('2d');
             pCtx.canvas.width = separation;
             pCtx.canvas.height = targetH;
 
             if (loadedPatternImg) {
-                // Tiling logic: repeats the texture pattern without scaling/distorting
                 const ptrn = pCtx.createPattern(loadedPatternImg, 'repeat');
                 pCtx.fillStyle = ptrn;
                 pCtx.fillRect(0, 0, separation, targetH);
             } else {
-                // Fallback: Noise
                 const pData = pCtx.createImageData(separation, targetH);
                 for (let i = 0; i < pData.data.length; i += 4) {
                     pData.data[i] = Math.random() * 255;    
@@ -692,12 +836,15 @@
                             loadedDepthImg = img;
                             depthPreview.src = url;
                             document.getElementById('depthDims').innerText = `${img.width}x${img.height}`;
+                            depthBrightness = 0;
+                            updateBrightnessVisuals();
                         } else {
                             loadedPatternImg = img;
                             patternPreview.src = url;
                             patternPreview.classList.remove('hidden');
                             document.getElementById('patternPlaceholder').classList.add('hidden');
                             document.getElementById('removeTextureBtn').classList.remove('hidden');
+                            dlTextureBtn.classList.remove('hidden');
                         }
                         generateStereogram();
                         closeGenerator();
@@ -726,3 +873,4 @@
     </script>
 </body>
 </html>
+
